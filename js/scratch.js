@@ -9,17 +9,21 @@
 var Scratch = {}
 
 Scratch = (function(window, document) {
-	
-	/*
-	 * Array for taking the count of times that screen is touched on each section
-	 */
-	var counterSectionsTouched;
-	
 	/* BYJC
 	 * Array which has a 0 if the section is not principal and a 1 otherwise
 	 */
 	var counterInterestSections;
+	/*
+	 * Array for taking the count of times that screen is touched on each section
+	 */
+	var counterSectionsTouched;
 
+
+	/* BYJC
+	 * It stores the number of revealed interest sections
+	 */
+	var revealedInterestSections;
+	
 	/*
 	 * Height of canvas element
 	 */
@@ -29,7 +33,12 @@ Scratch = (function(window, document) {
 	 * Store the canvas of image
 	 */
 	var imageCanvas;
-
+	
+	/* BYJC
+	 * Percentage of interest needed to win
+	 */
+	var interestPercentage = 80;
+	
 	/*
 	 * Store the canvas of layer
 	 */
@@ -39,6 +48,11 @@ Scratch = (function(window, document) {
 	 * Canvas context where to draw
 	 */
 	var layerContext;
+	
+	/* BYJC
+	 * It stores the number of interest sections
+	 */
+	var numberOfInterestSections;
 	
 	/*
 	 * Number of layers
@@ -59,44 +73,6 @@ Scratch = (function(window, document) {
 	 * Width of canvas element
 	 */
 	var width;
-	
-	/* BY JC
-	 * Returns true if the section is part of the interest zone, false otherwise
-	 */
-	function isInterest(sectionNumber){
-		var returnedValue = false;
-		if (counterInterestSections[sectionNumber] == 1)
-			returnedValue = true;
-		
-		return returnedValue;
-	}
-	
-	/* BY JC
-	 * Sets the interest zone 
-	 * @param x
-	 * @param y
-	 * @param width
-	 * @param height
-	 */
-	function setInterestZone (x,y,width,height){
-		var numSections = parseInt((parseInt(width) * parseInt(height)) / Math.pow(sectionSize, 2));		
-		counterInterestSections = new Array(numSections);
-		
-		/* Initialize sections array */
-		for (var i = 0; i < numSections; i++) {
-			counterInterestSections[i] = 0;
-		}
-		
-		var startSection = getSectionNumberFromPosition(x, y);
-		var widthInSections =  getSectionNumberFromPosition(x+width, y) - startSection;
-		var heightInSections = (getSectionNumberFromPosition(x, y+height) - startSection)/sectionsByRow;
-		
-		for(var i = 0; i<heightInSections; i++){
-			for(var j = 0; j<widthInSections; j++){
-				counterInterestSections[sectionsByRow*i+startSection+j] = 1;
-			}
-		}
-	}
 	
 	/*
 	 * Draw layers on canvas
@@ -124,6 +100,13 @@ Scratch = (function(window, document) {
 		/* Draw original image section on canvas */
 		layerContext.drawImage(imageCanvas, section.x, section.y, section.width, section.height, 
 											section.x, section.y, section.width, section.height);			
+	}
+	
+	/* BY JC
+	 * Gets the percentage of interest zone that is revealed
+	 */
+	function getInterestPercentage (){
+		return Math.round(revealedInterestSections/numberOfInterestSections*100);
 	}
 	
 	/*
@@ -189,7 +172,7 @@ Scratch = (function(window, document) {
 		image.src = 'img/ganar.jpg';
 		
 		/** BY JC**/
-		setInterestZone (Math.round(width/2),Math.round(width/2),50,50);
+		setInterestZone (Math.round(width/2),Math.round(height/2),Math.round(width/2),Math.round(height/2));
 		/** END BY JC **/
 			
 		/* Events */
@@ -197,6 +180,17 @@ Scratch = (function(window, document) {
 		document.addEventListener('touchmove', scratch, false);
 		/*document.addEventListener('mousedown', scratch, true);
 		document.addEventListener('mousemove', scratch, true);*/
+	}
+	
+	/* BY JC
+	 * Returns true if the section is part of the interest zone, false otherwise
+	 */
+	function isInterest(sectionNumber){
+		var returnedValue = false;
+		if (counterInterestSections[sectionNumber] == 1)
+			returnedValue = true;
+		
+		return returnedValue;
 	}
 	
 	/*
@@ -221,18 +215,23 @@ Scratch = (function(window, document) {
 	        /* Calculate logic section */
 			var currentSection = getSectionNumberFromPosition(x, y);
 			
-			/* Increasing count of touch on the section */
-			counterSectionsTouched[currentSection] += 1;
-	
-			/* Drawing the section with original image section */
-			if(counterSectionsTouched[currentSection] == numLayers) {		
-				drawSection(currentSection);				
+			/** Cambio aprobado por Ruben**/
+			if(counterSectionsTouched[currentSection] <= numLayers) {		
+				/* Increasing count of touch on the section */
+				counterSectionsTouched[currentSection] += 1;
 			}
 			
-			/** BY JC: Checking if the section is of interest **/
-			if(isInterest(currentSection))
-				alert('Interest zone');
-			/** END BY JC**/
+			/* Drawing the section with original image section */
+			if(counterSectionsTouched[currentSection] == numLayers) {		
+				drawSection(currentSection);
+				/** BY JC: Checking if the section is of interest **/
+				if(isInterest(currentSection)){
+					revealedInterestSections+=1;
+					if(getInterestPercentage()>=interestPercentage)
+						alert("Has ganado! Revelando el "+getInterestPercentage()+"%");
+				}
+				/** END BY JC**/
+			}
 		}
 	}
 	
@@ -247,6 +246,36 @@ Scratch = (function(window, document) {
 		/* Initialize sections array */
 		for (var i = 0; i < numSections; i++) {
 			counterSectionsTouched[i] = 0;
+		}
+	}
+	
+	/* BY JC
+	 * Sets the interest zone 
+	 * @param x
+	 * @param y
+	 * @param width
+	 * @param height
+	 */
+	function setInterestZone (x,y,width,height){
+		var numSections = counterSectionsTouched.length;
+		counterInterestSections = new Array(numSections);
+		numberOfInterestSections = 0;
+		revealedInterestSections = 0;
+		
+		/* Initialize sections array */
+		for (var i = 0; i < numSections; i++) {
+			counterInterestSections[i] = 0;
+		}
+		
+		var startSection = getSectionNumberFromPosition(x, y);
+		var widthInSections =  getSectionNumberFromPosition(x+width, y) - startSection;
+		var heightInSections = (getSectionNumberFromPosition(x, y+height) - startSection)/sectionsByRow;
+		
+		for(var i = 0; i<heightInSections; i++){
+			for(var j = 0; j<widthInSections; j++){
+				counterInterestSections[sectionsByRow*i+startSection+j] = 1;
+				numberOfInterestSections += 1;
+			}
 		}
 	}
 	
